@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.Sample.config.ResponseStructure;
 import com.example.Sample.dto.AuthRequest;
 import com.example.Sample.dto.User;
 import com.example.Sample.service.UserService;
@@ -38,9 +39,16 @@ public class UserController {
 	private JwtUtil jwtUtil;
 	
 	@PostMapping("/register")
-	public ResponseEntity<User> register(@RequestBody User user){
+	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user){
 		User user1=userService.register(user);
-		return ResponseEntity.ok(user1);
+//		return ResponseEntity.ok(user1);
+		ResponseStructure<User>responseStructure=new ResponseStructure<>();
+		responseStructure.setStatus(HttpStatus.CREATED.value());
+		responseStructure.setMessage("User Register succuessfully");
+		responseStructure.setData(user1);
+//		 return ResponseEntity.status(HttpStatus.CREATED).body(user1);
+		return new ResponseEntity<ResponseStructure<User>>(responseStructure,HttpStatus.CREATED);
+	
 	}
 	
 	@PostMapping("/login")
