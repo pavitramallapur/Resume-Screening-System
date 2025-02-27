@@ -14,8 +14,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name="resume")
+@Table(name = "resume")
 public class Resume {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -23,102 +24,96 @@ public class Resume {
     private String candidateName;
     private String email;
     private String jobTitle;
-    private Double aiScore;
+//    private Double aiScore;
     private String filePath;
     private String status; // "Pending", "Reviewed", "Shortlisted"
 
     @Lob
     private String extractedText;
-    
+
     @CreatedDate
     private LocalDateTime uploadedAt;
 
-	public Long getId() {
-		return id;
-	}
+    // No-argument constructor required by Hibernate
+    public Resume() {
+        // This constructor is needed for Hibernate to instantiate the entity
+    }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    // Getter and setter methods
+    public Long getId() {
+        return id;
+    }
 
-	public String getCandidateName() {
-		return candidateName;
-	}
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	public void setCandidateName(String candidateName) {
-		this.candidateName = candidateName;
-	}
+    public String getCandidateName() {
+        return candidateName;
+    }
 
-	public String getEmail() {
-		return email;
-	}
+    public void setCandidateName(String candidateName) {
+        this.candidateName = candidateName;
+    }
 
-	public void setEmail(String email) {
-		this.email = email;
-	}
+    public String getEmail() {
+        return email;
+    }
 
-	public String getJobTitle() {
-		return jobTitle;
-	}
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-	public void setJobTitle(String jobTitle) {
-		this.jobTitle = jobTitle;
-	}
+    public String getJobTitle() {
+        return jobTitle;
+    }
 
-	public Double getAiScore() {
-		return aiScore;
-	}
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
+    }
 
-	public void setAiScore(Double aiScore) {
-		this.aiScore = aiScore;
-	}
 
-	public String getFilePath() {
-		return filePath;
-	}
+    public String getFilePath() {
+        return filePath;
+    }
 
-	public void setFilePath(String filePath) {
-		this.filePath = filePath;
-	}
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
 
-	public String getStatus() {
-		return status;
-	}
+    public String getStatus() {
+        return status;
+    }
 
-	public void setStatus(String status) {
-		this.status = status;
-	}
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
-	public String getExtractedText() {
-		return extractedText;
-	}
+    public String getExtractedText() {
+        return extractedText;
+    }
 
-	public void setExtractedText(String extractedText) {
-		this.extractedText = extractedText;
-	}
+    public void setExtractedText(String extractedText) {
+        this.extractedText = extractedText;
+    }
 
-	public LocalDateTime getUploadedAt() {
-		return uploadedAt;
-	}
+    public LocalDateTime getUploadedAt() {
+        return uploadedAt;
+    }
 
-	public void setUploadedAt(LocalDateTime uploadedAt) {
-		this.uploadedAt = uploadedAt;
-	}
+    public void setUploadedAt(LocalDateTime uploadedAt) {
+        this.uploadedAt = uploadedAt;
+    }
 
-	public Resume(String candidateName, String email, String jobTitle, Double aiScore, String filePath,
-			String status, String extractedText, LocalDateTime uploadedAt) {
-		super();
-		this.id = id;
-		this.candidateName = candidateName;
-		this.email = email;
-		this.jobTitle = jobTitle;
-		this.aiScore = aiScore;
-		this.filePath = filePath;
-		this.status = status;
-		this.extractedText = extractedText;
-		this.uploadedAt = uploadedAt;
-	}
-    
-    
-    
+    // Constructor with parameters for your custom use cases
+    public Resume(String candidateName, String email, String jobTitle, String filePath,
+                  String status, String extractedText, LocalDateTime uploadedAt) {
+        this.candidateName = candidateName;
+        this.email = email;
+        this.jobTitle = jobTitle;
+        this.filePath = filePath;
+        this.status = status;
+        this.extractedText = extractedText;
+        this.uploadedAt = uploadedAt;
+    }
 }
