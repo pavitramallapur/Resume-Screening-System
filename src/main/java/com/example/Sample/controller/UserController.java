@@ -30,16 +30,16 @@ import com.example.Sample.util.JwtUtil;
 @RestController
 @RequestMapping("/auth")
 public class UserController {
-	
+
 	@Autowired
 	private UserService userService;
-	
+
 	@Autowired
 	private PasswordEncoder passwordEncoder;
-	
+
 	@Autowired
 	private JwtUtil jwtUtil;
-	
+
 //	@PostMapping("/register")
 //	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user){
 //		User user1=userService.register(user);
@@ -52,9 +52,54 @@ public class UserController {
 //		return new ResponseEntity<ResponseStructure<User>>(responseStructure,HttpStatus.CREATED);
 //	
 //	}
+//	@PostMapping("/register")
+//	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user) {
+//		try {
+//			Role role;
+//			try {
+//				role = Role.valueOf(user.getRole().toString().toUpperCase());
+//				user.setRole(role);
+//			} catch (IllegalArgumentException e) {
+//				throw new InvalidRoleException(
+//						"Invalid role: " + user.getRole() + ". Allowed values: ADMIN, HR, CANDIDATE");
+//			}
+//
+//			// Register user
+//			User savedUser = userService.register(user);
+//
+//			// Response
+//			ResponseStructure<User> responseStructure = new ResponseStructure<>();
+//			responseStructure.setStatus(HttpStatus.CREATED.value());
+//			responseStructure.setMessage("User registered successfully");
+//			responseStructure.setData(savedUser);
+//
+//			return new ResponseEntity<>(responseStructure, HttpStatus.CREATED);
+//		} catch (InvalidRoleException e) {
+//			throw e; 
+//		}
+//	}
 	@PostMapping("/register")
 	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user) {
 	    try {
+	        // Email uniqueness check
+	        if (userService.existsByEmail(user.getEmail())) {
+	            ResponseStructure<User> responseStructure = new ResponseStructure<>();
+	            responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
+	            responseStructure.setMessage("Email already exists");
+	            responseStructure.setData("The email address " + user.getEmail() + " is already taken.");
+	            return new ResponseEntity<ResponseStructure<User>>(responseStructure, HttpStatus.BAD_REQUEST);
+	        }
+
+	        // Password validation check (must be at least 8 characters)
+	        if (user.getPassword() == null || user.getPassword().length() < 8) {
+	            ResponseStructure<User> responseStructure = new ResponseStructure<>();
+	            responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
+	            responseStructure.setMessage("Password is too short");
+	            responseStructure.setData("Password must be at least 8 characters long.");
+	            return new ResponseEntity<ResponseStructure<User>>(responseStructure, HttpStatus.BAD_REQUEST);
+	        }
+
+	        // Validate and convert role
 	        Role role;
 	        try {
 	            role = Role.valueOf(user.getRole().toString().toUpperCase());
@@ -74,45 +119,59 @@ public class UserController {
 
 	        return new ResponseEntity<>(responseStructure, HttpStatus.CREATED);
 	    } catch (InvalidRoleException e) {
-	        throw e; // Handled by @ExceptionHandler
+	        throw e; // This will be handled by @ExceptionHandler
 	    }
 	}
 
-	
+
 	@PostMapping("/login")
-    public ResponseEntity<ResponseStructure<Map<String, String>>> login(@RequestBody AuthRequest request) {
-        Optional<User> user = userService.findByEmail(request.getEmail());
-        ResponseStructure<Map<String, String >>responsestructure=new ResponseStructure<>();
+	public ResponseEntity<ResponseStructure<Map<String, String>>> login(@RequestBody AuthRequest request) {
+		Optional<User> user = userService.findByEmail(request.getEmail());
+		ResponseStructure<Map<String, String>> responsestructure = new ResponseStructure<>();
 
-        if (user.isEmpty() || !passwordEncoder.matches(request.getPassword(), user.get().getPassword())) {
-        	responsestructure.setMessage("Invalid credentials!");
-            return new ResponseEntity<ResponseStructure<Map<String,String>>>(responsestructure,HttpStatus.BAD_REQUEST);
-        }
+		if (user.isEmpty() || !passwordEncoder.matches(request.getPassword(), user.get().getPassword())) {
+			responsestructure.setMessage("Invalid credentials!");
+			return new ResponseEntity<ResponseStructure<Map<String, String>>>(responsestructure,
+					HttpStatus.BAD_REQUEST);
+		}
 
-        String token = jwtUtil.generateToken(user.get().getEmail(),user.get().getRole());
-        responsestructure.setStatus(HttpStatus.OK.value());
-        responsestructure.setMessage("Login successfully");
-        responsestructure.setData(token);
-        return new ResponseEntity<ResponseStructure<Map<String,String>>>(responsestructure,HttpStatus.OK);
-    }
-	
-
+		String token = jwtUtil.generateToken(user.get().getEmail(), user.get().getRole());
+		responsestructure.setStatus(HttpStatus.OK.value());
+		responsestructure.setMessage("Login successfully");
+		responsestructure.setData(token);
+		return new ResponseEntity<ResponseStructure<Map<String, String>>>(responsestructure, HttpStatus.OK);
+	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<User> getUserProfile(@PathVariable Long id) {
-	    User user = userService.findById(id)
-	            .orElseThrow(() -> new RuntimeException("User not found"));
-	    return ResponseEntity.ok(user);
-	
-}
+	public ResponseEntity<ResponseStructure<User>> getUserProfile(@PathVariable Long id) {
+		User user = userService.findById(id).orElse(null);
+		if (user != null) {
+			
+			ResponseStructure<User> responseStructure = new ResponseStructure<>();
+			responseStructure.setStatus(HttpStatus.OK.value());
+			responseStructure.setMessage("User Found Successfully");
+			responseStructure.setData(user);
+			return new ResponseEntity<ResponseStructure<User>>(responseStructure, HttpStatus.OK);
+		} else {
+//	    return ResponseEntity.ok(user);
+			   ResponseStructure<User> responseStructure = new ResponseStructure<>();
+		        responseStructure.setStatus(HttpStatus.NOT_FOUND.value());
+		        responseStructure.setMessage("User not found");
+		        responseStructure.setData("User with ID " + id + " does not exist.");
+		        return new ResponseEntity<ResponseStructure<User>>(responseStructure, HttpStatus.NOT_FOUND);
+		    }
+	}
 
-	 @PutMapping("/{id}")
-	 public ResponseEntity<User> updateProfile(@PathVariable Long id,@RequestBody User user){
-		 User user1=userService.updateUser(id, user);
-		 return ResponseEntity.ok(user);
-	 }
-	 
-	 
+	@PutMapping("/{id}")
+	public ResponseEntity<ResponseStructure<User>> updateProfile(@PathVariable Long id, @RequestBody User user) {
+		User user1 = userService.updateUser(id, user);
+		ResponseStructure<User> responseStructure=new ResponseStructure<>();
+		responseStructure.setMessage("User Successfully Updated");
+		responseStructure.setStatus(HttpStatus.OK.value());
+		responseStructure.setData(user);
+		return new ResponseEntity<ResponseStructure<User>> (responseStructure,HttpStatus.OK);
+	}
+
 //	 @PostMapping("/refresh-token")
 //	 public ResponseEntity<String> refreshToken(@RequestBody String refreshToken) {
 //	     try {
@@ -123,33 +182,50 @@ public class UserController {
 //	     }
 //	 }
 
-	 private static final Logger logger = LoggerFactory.getLogger(UserController.class);
-	    
-	    @PostMapping("/refresh")
-	    public ResponseEntity<?> refreshToken(@RequestBody Map<String, Object> request) {
-	        try {
-	            // Get the token from the request - it could be a nested object
-	            Object refreshTokenObj = request.get("refreshToken");
-	            
-	            if (refreshTokenObj == null) {
-	                return ResponseEntity.badRequest().body("Refresh token is required");
-	            }
-	            
-	            // Convert to string - we'll clean it in the JwtUtil class
-	            String refreshToken = refreshTokenObj.toString();
-	            logger.debug("Received refresh token: " + refreshToken);
-	            
-	            String newAccessToken = jwtUtil.refreshAccessToken(refreshToken);
-	            
-	            Map<String, String> response = new HashMap<>();
-	            response.put("accessToken", newAccessToken);
-	            
-	            return ResponseEntity.ok(response);
-	        } catch (Exception e) {
-	            logger.error("Error refreshing token: " + e.getMessage(), e);
-	            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh token: " + e.getMessage());
-	        }
-	    }
+	private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
+	@PostMapping("/refresh")
+	public ResponseEntity<ResponseStructure<Map<String, String>>> refreshToken(@RequestBody Map<String, Object> request) {
+	    try {
+	        // Get the token from the request - it could be a nested object
+	        Object refreshTokenObj = request.get("refreshToken");
+
+	        if (refreshTokenObj == null) {
+	            ResponseStructure<Map<String, String>>responseStructure = new ResponseStructure<>();
+	            responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
+	            responseStructure.setMessage("Refresh token is required");
+	            responseStructure.setData("No refresh token provided");
+	            return new ResponseEntity<>(responseStructure, HttpStatus.BAD_REQUEST);
+	        }
+
+	        // Convert to string - we'll clean it in the JwtUtil class
+	        String refreshToken = refreshTokenObj.toString();
+	        logger.debug("Received refresh token: " + refreshToken);
+
+	        String newAccessToken = jwtUtil.refreshAccessToken(refreshToken);
+
+	        Map<String, String> response = new HashMap<>();
+	        response.put("accessToken", newAccessToken);
+
+	        // Successful response with the new access token
+	        ResponseStructure<Map<String, String>> responseStructure = new ResponseStructure<>();
+	        responseStructure.setStatus(HttpStatus.OK.value());
+	        responseStructure.setMessage("Access token refreshed successfully");
+	        responseStructure.setData(response);
+
+	        return new ResponseEntity<ResponseStructure<Map<String, String>>>(responseStructure, HttpStatus.OK);
+
+	    } catch (Exception e) {
+	        logger.error("Error refreshing token: " + e.getMessage(), e);
+
+	        // Error response when token refresh fails
+	        ResponseStructure<Map<String, String>>responseStructure = new ResponseStructure<>();
+	        responseStructure.setStatus(HttpStatus.UNAUTHORIZED.value());
+	        responseStructure.setMessage("Invalid refresh token: " + e.getMessage());
+	        responseStructure.setData("The provided refresh token is invalid or expired.");
+
+	        return new ResponseEntity<ResponseStructure<Map<String, String>>>(responseStructure, HttpStatus.UNAUTHORIZED);
+	    }
+	}
 
 }

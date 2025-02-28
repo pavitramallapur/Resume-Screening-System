@@ -4,9 +4,12 @@ import org.apache.kafka.common.errors.ResourceNotFoundException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.Sample.config.ResponseStructure;
 import com.example.Sample.dto.JobPosting;
 import com.example.Sample.dto.Resume;
 import com.example.Sample.service.JobPostingService;
@@ -14,6 +17,7 @@ import com.example.Sample.service.ResumeService;
 import com.example.Sample.util.ResumeJobMatcher;
 
 import java.io.File;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -36,14 +40,60 @@ public class ResumeController {
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
+//    @PostMapping("/upload")
+//    public String uploadResume(@RequestParam String candidateName,
+//                               @RequestParam String email,
+//                               @RequestParam String jobTitle,
+//                               @RequestParam String status,
+//                               @RequestParam("file") MultipartFile file) throws java.io.IOException {
+//        return processResume(candidateName, email, jobTitle, status, file);
+////        ResponseStructure<String>responseStructure=new ResponseStructure<>();
+////        responseStructure.setStatus(HttpStatus.OK.value());
+////        responseStructure.setMessage("Resume Upload succuessfully");
+////        responseStructure.setData(candidateName,email,jobTitle,status,file);
+////        return new ResponseEntity<ResponseStructure<String>>(responseStructure,HttpStatus.OK);
+//    }
     @PostMapping("/upload")
-    public String uploadResume(@RequestParam String candidateName,
-                               @RequestParam String email,
-                               @RequestParam String jobTitle,
-                               @RequestParam String status,
-                               @RequestParam("file") MultipartFile file) throws java.io.IOException {
-        return processResume(candidateName, email, jobTitle, status, file);
+    public ResponseEntity<ResponseStructure<String>> uploadResume(
+            @RequestParam String candidateName,
+            @RequestParam String email,
+            @RequestParam String jobTitle,
+            @RequestParam String status,
+            @RequestParam("file") MultipartFile file) throws java.io.IOException {
+
+        
+        String fileName = file.getOriginalFilename();
+
+        if (file == null || file.isEmpty()) {
+        	ResponseStructure<String>responseStructure=new ResponseStructure<>();
+            responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
+            responseStructure.setMessage("File is required and cannot be empty");
+            responseStructure.setData(null);
+            return new ResponseEntity<>(responseStructure, HttpStatus.BAD_REQUEST);
+        }
+        
+        // Create a Resume object
+        Resume resume = new Resume();
+        resume.setCandidateName(candidateName);
+        resume.setEmail(email);
+        resume.setJobTitle(jobTitle);
+        resume.setStatus(status);
+        resume.setFilePath(fileName);
+//        resume.setUploadedAt(LocalDateTime.now());  // Set the uploaded timestamp
+
+        // Save the resume to your database (you may need to call a service here)
+         resumeService.saveResume(resume);  
+
+    
+        ResponseStructure<String> responseStructure = new ResponseStructure<>();
+        responseStructure.setStatus(HttpStatus.OK.value());
+        responseStructure.setMessage("Resume uploaded successfully");
+        responseStructure.setData("Resume uploaded for: " + resume.getCandidateName() + " (File name: " + resume.getFilePath() + ")");
+
+        return new ResponseEntity<>(responseStructure, HttpStatus.OK);
     }
+
+ 
 
     @PostMapping("/uploadMultiple")
     public List<String> uploadMultipleResumes(@RequestParam String candidateName,
