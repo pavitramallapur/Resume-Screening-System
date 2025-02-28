@@ -62,4 +62,10 @@ public class UserServiceImpl implements UserService {
 		}
 	}
 
+	@Override
+	public boolean existsByEmail(String email) {
+	    return userRepo.existsByEmail(email);
+	}
+
+
 }

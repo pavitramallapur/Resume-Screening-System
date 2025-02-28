@@ -18,6 +18,8 @@ public interface UserService {
 
 	User updateUser(Long id, User u1);
 
+	boolean existsByEmail(String email);
+
 //	ResponseEntity<User> findById(User id);
 
 }

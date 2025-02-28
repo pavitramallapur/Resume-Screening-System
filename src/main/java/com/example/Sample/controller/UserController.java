@@ -52,32 +52,77 @@ public class UserController {
 //		return new ResponseEntity<ResponseStructure<User>>(responseStructure,HttpStatus.CREATED);
 //	
 //	}
+//	@PostMapping("/register")
+//	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user) {
+//		try {
+//			Role role;
+//			try {
+//				role = Role.valueOf(user.getRole().toString().toUpperCase());
+//				user.setRole(role);
+//			} catch (IllegalArgumentException e) {
+//				throw new InvalidRoleException(
+//						"Invalid role: " + user.getRole() + ". Allowed values: ADMIN, HR, CANDIDATE");
+//			}
+//
+//			// Register user
+//			User savedUser = userService.register(user);
+//
+//			// Response
+//			ResponseStructure<User> responseStructure = new ResponseStructure<>();
+//			responseStructure.setStatus(HttpStatus.CREATED.value());
+//			responseStructure.setMessage("User registered successfully");
+//			responseStructure.setData(savedUser);
+//
+//			return new ResponseEntity<>(responseStructure, HttpStatus.CREATED);
+//		} catch (InvalidRoleException e) {
+//			throw e; 
+//		}
+//	}
 	@PostMapping("/register")
 	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user) {
-		try {
-			Role role;
-			try {
-				role = Role.valueOf(user.getRole().toString().toUpperCase());
-				user.setRole(role);
-			} catch (IllegalArgumentException e) {
-				throw new InvalidRoleException(
-						"Invalid role: " + user.getRole() + ". Allowed values: ADMIN, HR, CANDIDATE");
-			}
+	    try {
+	        // Email uniqueness check
+	        if (userService.existsByEmail(user.getEmail())) {
+	            ResponseStructure<User> responseStructure = new ResponseStructure<>();
+	            responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
+	            responseStructure.setMessage("Email already exists");
+	            responseStructure.setData("The email address " + user.getEmail() + " is already taken.");
+	            return new ResponseEntity<ResponseStructure<User>>(responseStructure, HttpStatus.BAD_REQUEST);
+	        }
 
-			// Register user
-			User savedUser = userService.register(user);
+	        // Password validation check (must be at least 8 characters)
+	        if (user.getPassword() == null || user.getPassword().length() < 8) {
+	            ResponseStructure<User> responseStructure = new ResponseStructure<>();
+	            responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
+	            responseStructure.setMessage("Password is too short");
+	            responseStructure.setData("Password must be at least 8 characters long.");
+	            return new ResponseEntity<ResponseStructure<User>>(responseStructure, HttpStatus.BAD_REQUEST);
+	        }
 
-			// Response
-			ResponseStructure<User> responseStructure = new ResponseStructure<>();
-			responseStructure.setStatus(HttpStatus.CREATED.value());
-			responseStructure.setMessage("User registered successfully");
-			responseStructure.setData(savedUser);
+	        // Validate and convert role
+	        Role role;
+	        try {
+	            role = Role.valueOf(user.getRole().toString().toUpperCase());
+	            user.setRole(role);
+	        } catch (IllegalArgumentException e) {
+	            throw new InvalidRoleException("Invalid role: " + user.getRole() + ". Allowed values: ADMIN, HR, CANDIDATE");
+	        }
 
-			return new ResponseEntity<>(responseStructure, HttpStatus.CREATED);
-		} catch (InvalidRoleException e) {
-			throw e; 
-		}
+	        // Register user
+	        User savedUser = userService.register(user);
+
+	        // Response
+	        ResponseStructure<User> responseStructure = new ResponseStructure<>();
+	        responseStructure.setStatus(HttpStatus.CREATED.value());
+	        responseStructure.setMessage("User registered successfully");
+	        responseStructure.setData(savedUser);
+
+	        return new ResponseEntity<>(responseStructure, HttpStatus.CREATED);
+	    } catch (InvalidRoleException e) {
+	        throw e; // This will be handled by @ExceptionHandler
+	    }
 	}
+
 
 	@PostMapping("/login")
 	public ResponseEntity<ResponseStructure<Map<String, String>>> login(@RequestBody AuthRequest request) {
