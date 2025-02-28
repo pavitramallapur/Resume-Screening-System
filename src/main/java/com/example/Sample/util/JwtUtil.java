@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.example.Sample.dto.User.Role;
+
 @Component
 public class JwtUtil {
 
@@ -30,15 +32,16 @@ public class JwtUtil {
         }
     }
 
-    public String generateToken(String email, String role) {
+    public String generateToken(String email, Role role) {
         return Jwts.builder()
                 .setSubject(email)
-                .claim("role", role)
+                .claim("role", role.toString()) // Ensure string format
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(key(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
 
     public String extractEmail(String token) {
         token = extractRealToken(token);
@@ -51,16 +54,23 @@ public class JwtUtil {
                 .getSubject(); 
     }
     
-    public String extractRole(String token) {
+    public Role extractRole(String token) {
         token = extractRealToken(token);
-        
-        return Jwts.parserBuilder()
+        String roleStr = Jwts.parserBuilder()
                 .setSigningKey(key())
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .get("role", String.class); 
+                .get("role", String.class);
+
+        try {
+            return Role.valueOf(roleStr); // Convert to Enum
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid role in token: " + roleStr);
+            throw new RuntimeException("Invalid role: " + roleStr);
+        }
     }
+
 
     public String refreshAccessToken(String refreshToken) {
         refreshToken = extractRealToken(refreshToken);
@@ -68,7 +78,7 @@ public class JwtUtil {
         
         if (validateToken(refreshToken)) {
             String email = extractEmail(refreshToken); 
-            String role = extractRole(refreshToken);   
+            Role role = extractRole(refreshToken);   
             return generateToken(email, role); 
         } else {
             throw new RuntimeException("Invalid refresh token");

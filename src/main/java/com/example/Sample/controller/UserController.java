@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.Sample.config.ResponseStructure;
 import com.example.Sample.dto.AuthRequest;
 import com.example.Sample.dto.User;
+import com.example.Sample.dto.User.Role;
+import com.example.Sample.exception.InvalidRoleException;
 import com.example.Sample.service.UserService;
 import com.example.Sample.util.JwtUtil;
 
@@ -38,30 +40,63 @@ public class UserController {
 	@Autowired
 	private JwtUtil jwtUtil;
 	
+//	@PostMapping("/register")
+//	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user){
+//		User user1=userService.register(user);
+////		return ResponseEntity.ok(user1);
+//		ResponseStructure<User>responseStructure=new ResponseStructure<>();
+//		responseStructure.setStatus(HttpStatus.CREATED.value());
+//		responseStructure.setMessage("User Register succuessfully");
+//		responseStructure.setData(user1);
+////		 return ResponseEntity.status(HttpStatus.CREATED).body(user1);
+//		return new ResponseEntity<ResponseStructure<User>>(responseStructure,HttpStatus.CREATED);
+//	
+//	}
 	@PostMapping("/register")
-	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user){
-		User user1=userService.register(user);
-//		return ResponseEntity.ok(user1);
-		ResponseStructure<User>responseStructure=new ResponseStructure<>();
-		responseStructure.setStatus(HttpStatus.CREATED.value());
-		responseStructure.setMessage("User Register succuessfully");
-		responseStructure.setData(user1);
-//		 return ResponseEntity.status(HttpStatus.CREATED).body(user1);
-		return new ResponseEntity<ResponseStructure<User>>(responseStructure,HttpStatus.CREATED);
-	
+	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user) {
+	    try {
+	        Role role;
+	        try {
+	            role = Role.valueOf(user.getRole().toString().toUpperCase());
+	            user.setRole(role);
+	        } catch (IllegalArgumentException e) {
+	            throw new InvalidRoleException("Invalid role: " + user.getRole() + ". Allowed values: ADMIN, HR, CANDIDATE");
+	        }
+
+	        // Register user
+	        User savedUser = userService.register(user);
+
+	        // Response
+	        ResponseStructure<User> responseStructure = new ResponseStructure<>();
+	        responseStructure.setStatus(HttpStatus.CREATED.value());
+	        responseStructure.setMessage("User registered successfully");
+	        responseStructure.setData(savedUser);
+
+	        return new ResponseEntity<>(responseStructure, HttpStatus.CREATED);
+	    } catch (InvalidRoleException e) {
+	        throw e; // Handled by @ExceptionHandler
+	    }
 	}
+
 	
 	@PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@RequestBody AuthRequest request) {
+    public ResponseEntity<ResponseStructure<Map<String, String>>> login(@RequestBody AuthRequest request) {
         Optional<User> user = userService.findByEmail(request.getEmail());
+        ResponseStructure<Map<String, String >>responsestructure=new ResponseStructure<>();
 
         if (user.isEmpty() || !passwordEncoder.matches(request.getPassword(), user.get().getPassword())) {
-            return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials!"));
+        	responsestructure.setMessage("Invalid credentials!");
+            return new ResponseEntity<ResponseStructure<Map<String,String>>>(responsestructure,HttpStatus.BAD_REQUEST);
         }
 
         String token = jwtUtil.generateToken(user.get().getEmail(),user.get().getRole());
-        return ResponseEntity.ok(Map.of("token", token));
+        responsestructure.setStatus(HttpStatus.OK.value());
+        responsestructure.setMessage("Login successfully");
+        responsestructure.setData(token);
+        return new ResponseEntity<ResponseStructure<Map<String,String>>>(responsestructure,HttpStatus.OK);
     }
+	
+
 
 	@GetMapping("/{id}")
 	public ResponseEntity<User> getUserProfile(@PathVariable Long id) {
