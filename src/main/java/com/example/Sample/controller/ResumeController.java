@@ -17,6 +17,7 @@ import com.example.Sample.service.ResumeService;
 import com.example.Sample.util.ResumeJobMatcher;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,60 +41,34 @@ public class ResumeController {
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-//    @PostMapping("/upload")
-//    public String uploadResume(@RequestParam String candidateName,
-//                               @RequestParam String email,
-//                               @RequestParam String jobTitle,
-//                               @RequestParam String status,
-//                               @RequestParam("file") MultipartFile file) throws java.io.IOException {
-//        return processResume(candidateName, email, jobTitle, status, file);
-////        ResponseStructure<String>responseStructure=new ResponseStructure<>();
-////        responseStructure.setStatus(HttpStatus.OK.value());
-////        responseStructure.setMessage("Resume Upload succuessfully");
-////        responseStructure.setData(candidateName,email,jobTitle,status,file);
-////        return new ResponseEntity<ResponseStructure<String>>(responseStructure,HttpStatus.OK);
-//    }
+
     @PostMapping("/upload")
     public ResponseEntity<ResponseStructure<String>> uploadResume(
             @RequestParam String candidateName,
             @RequestParam String email,
             @RequestParam String jobTitle,
             @RequestParam String status,
-            @RequestParam("file") MultipartFile file) throws java.io.IOException {
+            @RequestParam("file") MultipartFile file) throws IOException {
 
-        
-        String fileName = file.getOriginalFilename();
+        ResponseStructure<String> responseStructure = new ResponseStructure<>();
 
+        // Check if the file is null or empty
         if (file == null || file.isEmpty()) {
-        	ResponseStructure<String>responseStructure=new ResponseStructure<>();
             responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
             responseStructure.setMessage("File is required and cannot be empty");
             responseStructure.setData(null);
             return new ResponseEntity<>(responseStructure, HttpStatus.BAD_REQUEST);
         }
-        
-        // Create a Resume object
-        Resume resume = new Resume();
-        resume.setCandidateName(candidateName);
-        resume.setEmail(email);
-        resume.setJobTitle(jobTitle);
-        resume.setStatus(status);
-        resume.setFilePath(fileName);
-//        resume.setUploadedAt(LocalDateTime.now());  // Set the uploaded timestamp
 
-        // Save the resume to your database (you may need to call a service here)
-         resumeService.saveResume(resume);  
+        // Process the resume
+        String resultMessage = processResume(candidateName, email, jobTitle, status, file);
 
-    
-        ResponseStructure<String> responseStructure = new ResponseStructure<>();
         responseStructure.setStatus(HttpStatus.OK.value());
-        responseStructure.setMessage("Resume uploaded successfully");
-        responseStructure.setData("Resume uploaded for: " + resume.getCandidateName() + " (File name: " + resume.getFilePath() + ")");
+        responseStructure.setMessage(resultMessage);
+        responseStructure.setData("Resume uploaded for: " + candidateName);
 
         return new ResponseEntity<>(responseStructure, HttpStatus.OK);
     }
-
- 
 
     @PostMapping("/uploadMultiple")
     public List<String> uploadMultipleResumes(@RequestParam String candidateName,
@@ -142,16 +117,16 @@ public class ResumeController {
         file.transferTo(uploadFile);
         return filePath;
     }
-//
-//    @GetMapping("/rank/{resumeId1}{resumeId2/{jobPostingId}")
-//    public double rankResume(@PathVariable Long resumeId, @PathVariable Long jobPostingId) {
-//        Resume resume = resumeService.getResumeById(resumeId);
-//        JobPosting jobPosting = jobPostingService.getJobPostingById(jobPostingId);
-//        if (resume == null || jobPosting == null) {
-//            throw new ResourceNotFoundException("Resume or Job Posting not found");
-//        }
-//        return resumeJobMatcher.matchResumeToJob(resume, jobPosting);
-//    }
+
+    @GetMapping("/rank/{resumeId}/{jobPostingId}")
+    public double rankResume(@PathVariable Long resumeId, @PathVariable Long jobPostingId) {
+        Resume resume = resumeService.getResumeById(resumeId);
+        JobPosting jobPosting = jobPostingService.getJobPostingById(jobPostingId);
+        if (resume == null || jobPosting == null) {
+            throw new ResourceNotFoundException("Resume or Job Posting not found");
+        }
+        return resumeJobMatcher.matchResumeToJob(resume, jobPosting);
+    }
     @GetMapping("/rank/{resumeId1}/{resumeId2}/{jobPostingId}")
     public String rankResumes(@PathVariable Long resumeId1, 
                               @PathVariable Long resumeId2, 

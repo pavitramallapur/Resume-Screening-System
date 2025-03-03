@@ -6,13 +6,16 @@ import java.util.stream.Collectors;
 
 public class TextProcessor {
 
-    public static List<String> tokenize(String text) {
-        return Arrays.stream(text.split("\\s+"))
-                .map(word -> word.replaceAll("[^a-zA-Z]", "").toLowerCase())
-                .filter(word -> !word.isEmpty())
-                .collect(Collectors.toList());
-    }
+	public static List<String> tokenize(String text) {
+	    if (text == null || text.trim().isEmpty()) {
+	        return List.of(); // Return an empty list instead of null
+	    }
 
+	    return Arrays.stream(text.split("\\s+"))
+	            .map(word -> word.replaceAll("[^a-zA-Z]", "").toLowerCase())
+	            .filter(word -> !word.isEmpty())
+	            .collect(Collectors.toList());
+	}
     // Optional: Remove stopwords using a predefined list
     public static List<String> removeStopwords(List<String> tokens, List<String> stopwords) {
         return tokens.stream()
