@@ -5,13 +5,13 @@ import com.example.Sample.dto.JobPosting;
 
 public interface JobPostingService {
 
-    JobPosting saveJobPosting(JobPosting jobPosting); // Save a job posting
+    JobPosting saveJobPosting(JobPosting jobPosting);
 
-    List<JobPosting> getAllJobPostings(); // Get all job postings
+    List<JobPosting> getAllJobPostings();
 
-    JobPosting getJobPostingById(Long id); // Get job posting by ID
+    JobPosting getJobPostingById(Long id); 
 
-    List<JobPosting> getJobPostingsByStatus(String status); // Get job postings by status
+    List<JobPosting> getJobPostingsByStatus(String status); 
 
-    void deleteJobPosting(Long id); // Delete job posting by ID
+    void deleteJobPosting(Long id); 
 }
