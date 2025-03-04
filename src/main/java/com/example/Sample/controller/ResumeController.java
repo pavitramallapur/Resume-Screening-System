@@ -10,14 +10,17 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.Sample.config.ResponseStructure;
+import com.example.Sample.dto.InterviewDetails;
 import com.example.Sample.dto.JobPosting;
 import com.example.Sample.dto.Resume;
+import com.example.Sample.service.InterviewSchedulerProducer;
 import com.example.Sample.service.JobPostingService;
 import com.example.Sample.service.ResumeService;
 import com.example.Sample.util.ResumeJobMatcher;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,147 +33,167 @@ import java.util.concurrent.Executors;
 @RequestMapping("/api/resumes")
 public class ResumeController {
 
-    @Autowired
-    private ResumeService resumeService;
-    
-    @Autowired
-    private JobPostingService jobPostingService;
-    
-    @Autowired
-    private ResumeJobMatcher resumeJobMatcher;
+	@Autowired
+	private ResumeService resumeService;
 
-    private final ExecutorService executorService = Executors.newFixedThreadPool(5);
+	@Autowired
+	private JobPostingService jobPostingService;
 
+	@Autowired
+	private ResumeJobMatcher resumeJobMatcher;
 
-    @PostMapping("/upload")
-    public ResponseEntity<ResponseStructure<String>> uploadResume(
-            @RequestParam String candidateName,
-            @RequestParam String email,
-            @RequestParam String jobTitle,
-            @RequestParam String status,
-            @RequestParam("file") MultipartFile file) throws IOException {
+	@Autowired
+	private InterviewSchedulerProducer interviewSchedulerProducer;
 
-        ResponseStructure<String> responseStructure = new ResponseStructure<>();
+	private final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
-        // Check if the file is null or empty
-        if (file == null || file.isEmpty()) {
-            responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
-            responseStructure.setMessage("File is required and cannot be empty");
-            responseStructure.setData(null);
-            return new ResponseEntity<>(responseStructure, HttpStatus.BAD_REQUEST);
-        }
+	@PostMapping("/upload")
+	public ResponseEntity<ResponseStructure<String>> uploadResume(@RequestParam String candidateName,
+			@RequestParam String email, @RequestParam String jobTitle, @RequestParam String status,
+			@RequestParam("file") MultipartFile file) throws IOException {
 
-        // Process the resume
-        String resultMessage = processResume(candidateName, email, jobTitle, status, file);
+		ResponseStructure<String> responseStructure = new ResponseStructure<>();
 
-        responseStructure.setStatus(HttpStatus.OK.value());
-        responseStructure.setMessage(resultMessage);
-        responseStructure.setData("Resume uploaded for: " + candidateName);
+		// Check if the file is null or empty
+		if (file == null || file.isEmpty()) {
+			responseStructure.setStatus(HttpStatus.BAD_REQUEST.value());
+			responseStructure.setMessage("File is required and cannot be empty");
+			responseStructure.setData(null);
+			return new ResponseEntity<>(responseStructure, HttpStatus.BAD_REQUEST);
+		}
 
-        return new ResponseEntity<>(responseStructure, HttpStatus.OK);
-    }
+		// Process the resume
+		String resultMessage = processResume(candidateName, email, jobTitle, status, file);
 
-    @PostMapping("/uploadMultiple")
-    public List<String> uploadMultipleResumes(@RequestParam String candidateName,
-                                              @RequestParam String email,
-                                              @RequestParam String jobTitle,
-                                              @RequestParam String status,
-                                              @RequestParam("files") MultipartFile[] files) {
-        List<String> responses = new ArrayList<>();
-        for (MultipartFile file : files) {
-            executorService.submit(() -> {
-                try {
-                    String response = processResume(candidateName, email, jobTitle, status, file);
-                    synchronized (responses) {
-                        responses.add(response);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-        return responses;
-    }
+		responseStructure.setStatus(HttpStatus.OK.value());
+		responseStructure.setMessage(resultMessage);
+		responseStructure.setData("Resume uploaded for: " + candidateName);
 
-    private String processResume(String candidateName, String email, String jobTitle, String status, MultipartFile file) {
-        try {
-            String filePath = saveUploadedFile(file);
-            String extractedText = extractTextFromPDF(filePath);
-            Resume savedResume = resumeService.saveResume(candidateName, email, jobTitle, filePath, status, extractedText);
-            return "Resume uploaded successfully with ID: " + savedResume.getId();
-        } catch (Exception e) {
-            return "Error processing resume: " + e.getMessage();
-        }
-    }
+		return new ResponseEntity<>(responseStructure, HttpStatus.OK);
+	}
 
-    private String extractTextFromPDF(String filePath) throws java.io.IOException {
-        try (PDDocument document = PDDocument.load(new File(filePath))) {
-            PDFTextStripper pdfStripper = new PDFTextStripper();
-            return pdfStripper.getText(document);
-        }
-    }
+	@PostMapping("/uploadMultiple")
+	public List<String> uploadMultipleResumes(@RequestParam String candidateName, @RequestParam String email,
+			@RequestParam String jobTitle, @RequestParam String status, @RequestParam("files") MultipartFile[] files) {
+		List<String> responses = new ArrayList<>();
+		for (MultipartFile file : files) {
+			executorService.submit(() -> {
+				try {
+					String response = processResume(candidateName, email, jobTitle, status, file);
+					synchronized (responses) {
+						responses.add(response);
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			});
+		}
+		return responses;
+	}
 
-    private String saveUploadedFile(MultipartFile file) throws java.io.IOException {
-        String uploadDir = "/home/pavitra/Documents/Resumes/";
-        String filePath = uploadDir + file.getOriginalFilename();
-        File uploadFile = new File(filePath);
-        file.transferTo(uploadFile);
-        return filePath;
-    }
+	private String processResume(String candidateName, String email, String jobTitle, String status,
+			MultipartFile file) {
+		try {
+			String filePath = saveUploadedFile(file);
+			String extractedText = extractTextFromPDF(filePath);
+			Resume savedResume = resumeService.saveResume(candidateName, email, jobTitle, filePath, status,
+					extractedText);
+			return "Resume uploaded successfully with ID: " + savedResume.getId();
+		} catch (Exception e) {
+			return "Error processing resume: " + e.getMessage();
+		}
+	}
 
-    @GetMapping("/rank/{resumeId}/{jobPostingId}")
-    public double rankResume(@PathVariable Long resumeId, @PathVariable Long jobPostingId) {
-        Resume resume = resumeService.getResumeById(resumeId);
-        JobPosting jobPosting = jobPostingService.getJobPostingById(jobPostingId);
-        if (resume == null || jobPosting == null) {
-            throw new ResourceNotFoundException("Resume or Job Posting not found");
-        }
-        return resumeJobMatcher.matchResumeToJob(resume, jobPosting);
-    }
-    @GetMapping("/rank/{resumeId1}/{resumeId2}/{jobPostingId}")
-    public String rankResumes(@PathVariable Long resumeId1, 
-                              @PathVariable Long resumeId2, 
-                              @PathVariable Long jobPostingId) throws ExecutionException, InterruptedException {
-        
-        // Fetch job posting
-        JobPosting jobPosting = jobPostingService.getJobPostingById(jobPostingId);
-        if (jobPosting == null) {
-            throw new ResourceNotFoundException("Job Posting not found");
-        }
+	private String extractTextFromPDF(String filePath) throws java.io.IOException {
+		try (PDDocument document = PDDocument.load(new File(filePath))) {
+			PDFTextStripper pdfStripper = new PDFTextStripper();
+			return pdfStripper.getText(document);
+		}
+	}
 
-        // Fetch resumes in parallel
-        CompletableFuture<Resume> resumeFuture1 = CompletableFuture.supplyAsync(() -> resumeService.getResumeById(resumeId1));
-        CompletableFuture<Resume> resumeFuture2 = CompletableFuture.supplyAsync(() -> resumeService.getResumeById(resumeId2));
+	private String saveUploadedFile(MultipartFile file) throws java.io.IOException {
+		String uploadDir = "/home/pavitra/Documents/Resumes/";
+		String filePath = uploadDir + file.getOriginalFilename();
+		File uploadFile = new File(filePath);
+		file.transferTo(uploadFile);
+		return filePath;
+	}
 
-        Resume resume1 = resumeFuture1.get();
-        Resume resume2 = resumeFuture2.get();
+	@GetMapping("/rank/{resumeId}/{jobPostingId}")
+	public String rankResume(@PathVariable Long resumeId, @PathVariable Long jobPostingId) {
+	    Resume resume = resumeService.getResumeById(resumeId);
+	    JobPosting jobPosting = jobPostingService.getJobPostingById(jobPostingId);
 
-        if (resume1 == null || resume2 == null) {
-            throw new ResourceNotFoundException("One or both resumes not found");
-        }
+	    if (resume == null || jobPosting == null) {
+	        throw new ResourceNotFoundException("Resume or Job Posting not found");
+	    }
 
-        // Compute AI scores in parallel
-        CompletableFuture<Double> scoreFuture1 = CompletableFuture.supplyAsync(() -> resumeJobMatcher.matchResumeToJob(resume1, jobPosting));
-        CompletableFuture<Double> scoreFuture2 = CompletableFuture.supplyAsync(() -> resumeJobMatcher.matchResumeToJob(resume2, jobPosting));
+	    double aiScore = resumeJobMatcher.matchResumeToJob(resume, jobPosting);
+	    System.out.println("AI Score generated: " + aiScore);
 
-        double score1 = scoreFuture1.get();
-        double score2 = scoreFuture2.get();
+	    if (aiScore >= 75) {
+	        String interviewDetails = generateInterviewDetails(resume);
+	        interviewSchedulerProducer.scheduleInterview(interviewDetails);
+	        System.out.println("Interview scheduled for Resume ID: " + resumeId);
+	    }
+	    return "AI Score:\nResume: " + aiScore + "%" + " \n✅ Interview scheduled for Resume ID: " + resumeId ;
+	    
+	}
 
-        return "AI Scores:\nResume 1: " + score1 + "%\nResume 2: " + score2 + "%";
-    }
+	private String generateInterviewDetails(Resume resume) {
 
+		String candidateName = resume.getCandidateName();
+		LocalDate interviewDate = LocalDate.now().plusDays(3);
 
-    @GetMapping("/all")
-    public List<Resume> getAllResumes() {
-        return resumeService.getAllResumes();
-    }
+		return "Candidate: " + candidateName + ", Interview Date: " + interviewDate;
+	}
 
-    @GetMapping("/jobpostings/{id}")
-    public JobPosting getJobPosting(@PathVariable Long id) {
-        JobPosting jobPosting = jobPostingService.getJobPostingById(id);
-        if (jobPosting == null) {
-            throw new ResourceNotFoundException("Job Posting not found");
-        }
-        return jobPosting;
-    }
+	@GetMapping("/rank/{resumeId1}/{resumeId2}/{jobPostingId}")
+	public String rankResumes(@PathVariable Long resumeId1, @PathVariable Long resumeId2,
+			@PathVariable Long jobPostingId) throws ExecutionException, InterruptedException {
+
+		// Fetch job posting
+		JobPosting jobPosting = jobPostingService.getJobPostingById(jobPostingId);
+		if (jobPosting == null) {
+			throw new ResourceNotFoundException("Job Posting not found");
+		}
+
+		// Fetch resumes in parallel
+		CompletableFuture<Resume> resumeFuture1 = CompletableFuture
+				.supplyAsync(() -> resumeService.getResumeById(resumeId1));
+		CompletableFuture<Resume> resumeFuture2 = CompletableFuture
+				.supplyAsync(() -> resumeService.getResumeById(resumeId2));
+
+		Resume resume1 = resumeFuture1.get();
+		Resume resume2 = resumeFuture2.get();
+
+		if (resume1 == null || resume2 == null) {
+			throw new ResourceNotFoundException("One or both resumes not found");
+		}
+
+		// Compute AI scores in parallel
+		CompletableFuture<Double> scoreFuture1 = CompletableFuture
+				.supplyAsync(() -> resumeJobMatcher.matchResumeToJob(resume1, jobPosting));
+		CompletableFuture<Double> scoreFuture2 = CompletableFuture
+				.supplyAsync(() -> resumeJobMatcher.matchResumeToJob(resume2, jobPosting));
+
+		double score1 = scoreFuture1.get();
+		double score2 = scoreFuture2.get();
+
+		return "AI Scores:\nResume 1: " + score1 + "%\nResume 2: " + score2 + "%";
+	}
+
+	@GetMapping("/all")
+	public List<Resume> getAllResumes() {
+		return resumeService.getAllResumes();
+	}
+
+	@GetMapping("/jobpostings/{id}")
+	public JobPosting getJobPosting(@PathVariable Long id) {
+		JobPosting jobPosting = jobPostingService.getJobPostingById(id);
+		if (jobPosting == null) {
+			throw new ResourceNotFoundException("Job Posting not found");
+		}
+		return jobPosting;
+	}
 }
