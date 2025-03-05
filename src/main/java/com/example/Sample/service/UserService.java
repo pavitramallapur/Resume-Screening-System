@@ -1,9 +1,11 @@
 package com.example.Sample.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
 
+import com.example.Sample.config.ResponseStructure;
 import com.example.Sample.dto.User;
 
 public interface UserService {
@@ -19,6 +21,10 @@ public interface UserService {
 	User updateUser(Long id, User u1);
 
 	boolean existsByEmail(String email);
+
+	ResponseEntity<ResponseStructure<List<User>>> findAll();
+
+	ResponseEntity<ResponseStructure<User>> deleteUser(Long id);
 
 //	ResponseEntity<User> findById(User id);
 
