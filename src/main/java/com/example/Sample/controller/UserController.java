@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +25,7 @@ import com.example.Sample.dto.AuthRequest;
 import com.example.Sample.dto.User;
 import com.example.Sample.dto.User.Role;
 import com.example.Sample.exception.InvalidRoleException;
+
 import com.example.Sample.service.UserService;
 import com.example.Sample.util.JwtUtil;
 
@@ -40,44 +42,6 @@ public class UserController {
 	@Autowired
 	private JwtUtil jwtUtil;
 
-//	@PostMapping("/register")
-//	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user){
-//		User user1=userService.register(user);
-////		return ResponseEntity.ok(user1);
-//		ResponseStructure<User>responseStructure=new ResponseStructure<>();
-//		responseStructure.setStatus(HttpStatus.CREATED.value());
-//		responseStructure.setMessage("User Register succuessfully");
-//		responseStructure.setData(user1);
-////		 return ResponseEntity.status(HttpStatus.CREATED).body(user1);
-//		return new ResponseEntity<ResponseStructure<User>>(responseStructure,HttpStatus.CREATED);
-//	
-//	}
-//	@PostMapping("/register")
-//	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user) {
-//		try {
-//			Role role;
-//			try {
-//				role = Role.valueOf(user.getRole().toString().toUpperCase());
-//				user.setRole(role);
-//			} catch (IllegalArgumentException e) {
-//				throw new InvalidRoleException(
-//						"Invalid role: " + user.getRole() + ". Allowed values: ADMIN, HR, CANDIDATE");
-//			}
-//
-//			// Register user
-//			User savedUser = userService.register(user);
-//
-//			// Response
-//			ResponseStructure<User> responseStructure = new ResponseStructure<>();
-//			responseStructure.setStatus(HttpStatus.CREATED.value());
-//			responseStructure.setMessage("User registered successfully");
-//			responseStructure.setData(savedUser);
-//
-//			return new ResponseEntity<>(responseStructure, HttpStatus.CREATED);
-//		} catch (InvalidRoleException e) {
-//			throw e; 
-//		}
-//	}
 	@PostMapping("/register")
 	public ResponseEntity<ResponseStructure<User>> register(@RequestBody User user) {
 	    try {
@@ -161,7 +125,10 @@ public class UserController {
 		        return new ResponseEntity<ResponseStructure<User>>(responseStructure, HttpStatus.NOT_FOUND);
 		    }
 	}
-
+	@GetMapping
+	public ResponseEntity<ResponseStructure<java.util.List<User>>> getAllUserProfile() {
+	    return userService.findAll();
+	}
 	@PutMapping("/{id}")
 	public ResponseEntity<ResponseStructure<User>> updateProfile(@PathVariable Long id, @RequestBody User user) {
 		User user1 = userService.updateUser(id, user);
@@ -171,16 +138,6 @@ public class UserController {
 		responseStructure.setData(user);
 		return new ResponseEntity<ResponseStructure<User>> (responseStructure,HttpStatus.OK);
 	}
-
-//	 @PostMapping("/refresh-token")
-//	 public ResponseEntity<String> refreshToken(@RequestBody String refreshToken) {
-//	     try {
-//	         String newAccessToken = jwtUtil.refreshAccessToken(refreshToken);
-//	         return ResponseEntity.ok(newAccessToken);
-//	     } catch (Exception e) {
-//	         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid refresh token");
-//	     }
-//	 }
 
 	private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
@@ -227,5 +184,10 @@ public class UserController {
 	        return new ResponseEntity<ResponseStructure<Map<String, String>>>(responseStructure, HttpStatus.UNAUTHORIZED);
 	    }
 	}
-
+	
+	@DeleteMapping("/{id}")
+	public ResponseEntity<ResponseStructure<User>> deleteUser(@PathVariable Long id){
+		return userService.deleteUser(id);
+	}
+       
 }

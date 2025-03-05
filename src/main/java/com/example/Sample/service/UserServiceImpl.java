@@ -1,12 +1,15 @@
 package com.example.Sample.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.example.Sample.config.ResponseStructure;
 import com.example.Sample.dto.User;
 import com.example.Sample.repo.UserRepo;
 
@@ -67,5 +70,30 @@ public class UserServiceImpl implements UserService {
 	    return userRepo.existsByEmail(email);
 	}
 
+	@Override
+	public ResponseEntity<ResponseStructure<List<User>>> findAll() {
+	    List<User> users = userRepo.findAll();
+	    
+	    ResponseStructure<List<User>> responseStructure = new ResponseStructure<>();
+	    responseStructure.setData(users);
+	    responseStructure.setMessage("All Users Retrieved Successfully!");
+	    responseStructure.setStatus(HttpStatus.OK.value());
 
+	    return new ResponseEntity<ResponseStructure<List<User>>>(responseStructure, HttpStatus.OK);
+	}
+
+	@Override
+	public ResponseEntity<ResponseStructure<User>> deleteUser(Long id) {
+		User user=userRepo.getById(id);
+		ResponseStructure<User> responseStructure=new ResponseStructure<>();
+		responseStructure.setStatus(HttpStatus.OK.value());
+		responseStructure.setMessage("User Deleted Successfully!");
+		
+		return new ResponseEntity<ResponseStructure<User>>(responseStructure,HttpStatus.OK);
+		
+	}
 }
+
+
+
+
